@@ -1,48 +1,24 @@
-import algokit_utils
 import pytest
-from algokit_utils import get_localnet_default_account
-from algokit_utils.config import config
-from algosdk.v2client.algod import AlgodClient
-from algosdk.v2client.indexer import IndexerClient
+from algosdk.v2client import algod
+from algosdk import mnemonic
+from algosdk import account
 
-from smart_contracts.artifacts.contract.contract_client import ContractClient
+algod_address = "https://testnet-api.4160.nodely.dev/" # https://mainnet-api.4160.nodely.dev/
+algod_token = ""
+mnemonic_phrase = "tree river prefer carry lift together charge priority cloud oxygen model twin hockey citizen deputy baby flip security bullet dry seat concert special about pride"
 
+algod_client = algod.AlgodClient(algod_token, algod_address)
 
-@pytest.fixture(scope="session")
-def contract_client(
-    algod_client: AlgodClient, indexer_client: IndexerClient
-) -> ContractClient:
-    config.configure(
-        debug=True,
-        # trace_all=True,
-    )
+def test_get_account_info():
+    account_private_key = mnemonic.to_private_key(mnemonic_phrase)
+    account_address = account.address_from_private_key(account_private_key)
 
-    client = ContractClient(
-        algod_client,
-        creator=get_localnet_default_account(algod_client),
-        indexer_client=indexer_client,
-    )
+    account_info = algod_client.account_info(account_address)
+    assert account_info is not None
+    assert account_info['address'] == account_address
 
-    client.deploy(
-        on_schema_break=algokit_utils.OnSchemaBreak.AppendApp,
-        on_update=algokit_utils.OnUpdate.AppendApp,
-    )
-    return client
-
-
-def test_says_hello(contract_client: ContractClient) -> None:
-    result = contract_client.hello(name="World")
-
-    assert result.return_value == "Hello, World"
-
-
-def test_simulate_says_hello_with_correct_budget_consumed(
-    contract_client: ContractClient, algod_client: AlgodClient
-) -> None:
-    result = (
-        contract_client.compose().hello(name="World").hello(name="Jane").simulate()
-    )
-
-    assert result.abi_results[0].return_value == "Hello, World"
-    assert result.abi_results[1].return_value == "Hello, Jane"
-    assert result.simulate_response["txn-groups"][0]["app-budget-consumed"] < 100
+def test_get_application_info():
+    app_id = 1  # replace with actual app ID after deployment
+    app_info = algod_client.application_info(app_id)
+    assert app_info is not None
+    assert app_info['id'] == app_id

@@ -1,53 +1,56 @@
-# mypy: disable-error-code="no-untyped-call, misc"
+from algosdk import mnemonic, transaction, account
+from algosdk.v2client import algod
+from pyteal import *
 
+algod_address = "https://testnet-api.4160.nodely.dev/" # https://testnet-api.4160.nodely.dev/
+algod_token = ""
+mnemonic_phrase = "tree river prefer carry lift together charge priority cloud oxygen model twin hockey citizen deputy baby flip security bullet dry seat concert special about pride"
 
-import logging
-from collections.abc import Callable
-from pathlib import Path
+algod_client = algod.AlgodClient(algod_token, algod_address)
 
-from algokit_utils import (
-    Account,
-    ApplicationSpecification,
-    EnsureBalanceParameters,
-    ensure_funded,
-    get_account,
-    get_algod_client,
-    get_indexer_client,
-)
-from algosdk.util import algos_to_microalgos
-from algosdk.v2client.algod import AlgodClient
-from algosdk.v2client.indexer import IndexerClient
-
-logger = logging.getLogger(__name__)
-
-
-def deploy(
-    app_spec_path: Path,
-    deploy_callback: Callable[
-        [AlgodClient, IndexerClient, ApplicationSpecification, Account], None
-    ],
-    deployer_initial_funds: int = 2,
-) -> None:
-    # get clients
-    # by default client configuration is loaded from environment variables
-    algod_client = get_algod_client()
-    indexer_client = get_indexer_client()
-
-    # get app spec
-    app_spec = ApplicationSpecification.from_json(app_spec_path.read_text())
-
-    # get deployer account by name
-    deployer = get_account(algod_client, "DEPLOYER", fund_with_algos=0)
-
-    minimum_funds_micro_algos = algos_to_microalgos(deployer_initial_funds)
-    ensure_funded(
-        algod_client,
-        EnsureBalanceParameters(
-            account_to_fund=deployer,
-            min_spending_balance_micro_algos=minimum_funds_micro_algos,
-            min_funding_increment_micro_algos=minimum_funds_micro_algos,
-        ),
+def approval_program():
+    return compileTeal(
+        Seq([
+            App.globalPut(Bytes("ebook_owner"), Txn.sender()),
+            App.globalPut(Bytes("ebook_id"), Int(0)),
+            Return(Int(1))
+        ]),
+        mode=Mode.Application
     )
 
-    # use provided callback to deploy the app
-    deploy_callback(algod_client, indexer_client, app_spec, deployer)
+def clear_state_program():
+    return compileTeal(
+        Return(Int(1)),
+        mode=Mode.Application
+    )
+
+def read_teal_file(file_path):
+    with open(file_path, 'r') as file:
+        return file.read().encode()
+
+def deploy_contract():
+    account_private_key = mnemonic.to_private_key(mnemonic_phrase)
+    account_address = account.address_from_private_key(account_private_key)
+
+    global_schema = transaction.StateSchema(num_uints=1, num_byte_slices=1)
+    local_schema = transaction.StateSchema(num_uints=0, num_byte_slices=0)
+
+    approval_program_teal = read_teal_file("../contract/approval.teal")
+    clear_program_teal = read_teal_file("../contract/clear.teal")
+
+    txn = transaction.ApplicationCreateTxn(
+        sender=account_address,
+        sp=algod_client.suggested_params(),
+        on_complete=transaction.OnComplete.NoOpOC,
+        approval_program=approval_program_teal,
+        clear_program=clear_program_teal,
+        global_schema=global_schema,
+        local_schema=local_schema
+    )
+
+    signed_txn = txn.sign(account_private_key)
+    txid = algod_client.send_transaction(signed_txn)
+    return txid
+
+if __name__ == "__main__":
+    deploy_contract()

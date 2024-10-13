@@ -1,0 +1,113 @@
+#pragma version 2
+txn ApplicationID
+int 0
+==
+bnz main_l18
+txn ApplicationID
+int 0
+!=
+bnz main_l17
+txn ApplicationID
+int 0
+!=
+bnz main_l16
+txn ApplicationID
+int 0
+==
+bnz main_l15
+txn ApplicationID
+int 0
+!=
+bnz main_l14
+txn ApplicationID
+int 0
+!=
+bnz main_l13
+txn ApplicationID
+int 0
+==
+bnz main_l12
+txn ApplicationID
+int 0
+!=
+bnz main_l11
+txn ApplicationID
+int 0
+!=
+bnz main_l10
+err
+main_l10:
+byte "video_id"
+app_global_get
+return
+main_l11:
+byte "video_(app_global_get (utf8 bytes: \"video_id\"))"
+txn Sender
+app_global_put
+byte "video_id"
+byte "video_id"
+app_global_get
+int 1
++
+app_global_put
+int 1
+return
+main_l12:
+byte "video_owner"
+txn Sender
+app_global_put
+byte "video_id"
+int 0
+app_global_put
+int 1
+return
+main_l13:
+byte "profile_id"
+app_global_get
+return
+main_l14:
+byte "profile_(app_global_get (utf8 bytes: \"profile_id\"))"
+txn Sender
+app_global_put
+byte "profile_id"
+byte "profile_id"
+app_global_get
+int 1
++
+app_global_put
+int 1
+return
+main_l15:
+byte "profile_owner"
+txn Sender
+app_global_put
+byte "profile_id"
+int 0
+app_global_put
+int 1
+return
+main_l16:
+byte "ebook_id"
+app_global_get
+return
+main_l17:
+byte "ebook_(app_global_get (utf8 bytes: \"ebook_id\"))"
+txn Sender
+app_global_put
+byte "ebook_id"
+byte "ebook_id"
+app_global_get
+int 1
++
+app_global_put
+int 1
+return
+main_l18:
+byte "ebook_owner"
+txn Sender
+app_global_put
+byte "ebook_id"
+int 0
+app_global_put
+int 1
+return
